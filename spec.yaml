@@ -1,0 +1,234 @@
+id: incident_map_plot
+
+metadata:
+  name: Incident Map Plot
+  description: >-
+    Shows the events of EarthRanger incidents on a map, drawn with their event icons or as
+    dots in their event-type colour, with a legend of event types. All of an incident's events
+    are included, even those dated outside the time range. Group by incident for one map per
+    incident.
+  maintainers:
+    - name: Zakariya Husayn
+      email: zakariya@wildlifedynamics.com
+      role: owner
+    - name: Yun Wu
+      email: yun@wildlifedynamics.com
+      role: reviewer
+  outputs:
+    - name: Map of incident events
+      type: map
+      description: >-
+        Each located event as its EarthRanger icon or a dot in its event-type colour, with a
+        legend of event types. Events of one incident at the same spot share a count badge.
+        Hover for the event, type, time, state and incident.
+      indicators:
+        - name: Incidents
+  license: BSD-3-Clause
+  repository: https://github.com/wildlife-dynamics/incident-map-plot
+  documentation: https://github.com/wildlife-dynamics/incident-map-plot#readme
+  readme: README.md
+  keywords: [incidents, events, map, earthranger]
+  thumbnail: resources/thumbnail.png
+
+requirements:
+  # get_incident_events arrived in 2.34.0; 2.37.0 matches the other workflows split out of
+  # the incident report.
+  - name: ecoscope-platform
+    version: ">=2.37.0,<3.0.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  # wd-partner-tasks: src/ecoscope-workflows-ext-wd (draw_incident_events_map, in _incidents.py).
+  # 0.0.20: draw_incident_events_map takes the RGBA colours apply_color_map writes. (0.0.19 was
+  # the first without the ext-custom dependency, whose releases need wt-task <0.2.)
+  - name: ecoscope-workflows-ext-wd
+    version: "0.0.20"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  # ecoscope-platform requires pydeck==0.9.2, which is only on conda-forge;
+  # pinned explicitly so strict channel priority can resolve it.
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+
+rjsf-overrides:
+  properties:
+    time_range.description: >-
+      Choose the period. Incidents created in this period are included, with all
+      of their events.
+
+    groupers.properties.groupers.description: >-
+      Choose Incident for one map per incident (optional). Leave empty for one
+      map of all incidents.
+    groupers.properties.groupers.items.anyOf:
+      - "$ref": "#/$defs/ValueGrouper"
+
+    base_maps.properties.base_maps.description: >-
+      Select tile layers to use as base layers in map outputs. The first layer in the
+      list will be the bottommost layer displayed.
+
+    # A checkbox, not a points/icons radio: the Ecoscope app's radio buttons never
+    # mark the selected option, so the default looked unset.
+    Map.properties.events_map.properties.show_icons.title: Show event icons on the map
+    Map.properties.events_map.properties.show_icons.description: >-
+      Draw each event with its EarthRanger icon. Turn off for dots in the event-type colour.
+
+  $defs:
+    ValueGrouper.properties.index_name.oneOf:
+      - const: incident
+        title: Incident
+
+  uiSchema:
+    groupers.groupers.items.anyOf:
+      - ui:options:
+          label: false
+    base_maps.base_maps.items.ui:options.label: false
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  - name: Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Data Source
+    id: er_client
+    task: set_er_connection
+
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+
+  - id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  - name: Group by
+    id: groupers
+    task: set_groupers
+
+  - name: Base Maps
+    id: base_maps
+    task: set_base_maps
+
+  - title: Incidents
+    type: task-group
+    description: Download the incidents and all of their events.
+    tasks:
+      - id: incident_events
+        # ext-wd has its own get_incident_events; this is the platform one
+        task: ecoscope.platform.tasks.io.get_incident_events
+        partial:
+          client: ${{ workflow.er_client.return }}
+          time_range: ${{ workflow.time_range.return }}
+          # Not in the form: no site has incidents inside incidents yet. Nested
+          # incidents are still followed up to 5 levels deep.
+          max_depth: 5
+          # Not in the form: the map can draw the event icons.
+          include_icons: true
+
+      # the map's hover shows each event's time in the range's timezone
+      - id: events_local_time
+        task: convert_values_to_timezone
+        partial:
+          df: ${{ workflow.incident_events.return }}
+          timezone: ${{ workflow.get_timezone.return }}
+          columns:
+            - time
+
+      # Colours are assigned once, before splitting, so an event type keeps its colour in
+      # every view. The most common type gets the first colour (ties by name). Same steps and
+      # list as incident-storyboard and incident-sunburst-plot, so they agree side by side.
+      - id: event_type_colors
+        task: color_map_by_frequency
+        partial:
+          df: ${{ workflow.events_local_time.return }}
+          input_column_name: event_type_display
+          colormap:
+            - "#2a78d6"
+            - "#eb6834"
+            - "#1baf7a"
+            - "#eda100"
+            - "#e87ba4"
+            - "#008300"
+            - "#6250d6"
+            - "#e34948"
+            - "#0f9fb5"
+            - "#8c5a3c"
+            - "#a6b51b"
+            - "#b14fc5"
+            - "#1f4e8c"
+            - "#7cc4f0"
+            - "#9b2f5f"
+            - "#d4a3e8"
+
+      # into `type_color`, the column draw_incident_events_map reads
+      - id: incident_data
+        task: apply_color_map
+        partial:
+          df: ${{ workflow.events_local_time.return }}
+          input_column_name: event_type_display
+          output_column_name: type_color
+          colormap: ${{ workflow.event_type_colors.return }}
+
+      - id: incidents_split
+        task: split_groups
+        partial:
+          df: ${{ workflow.incident_data.return }}
+          groupers: ${{ workflow.groupers.return }}
+
+  - title: Map
+    type: task-group
+    description: ""
+    tasks:
+      - id: events_map
+        task: draw_incident_events_map
+        partial:
+          tile_layers: ${{ workflow.base_maps.return }}
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.incidents_split.return }}
+
+      - id: events_map_html
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: events_map
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.events_map.return }}
+
+      - id: events_map_widget
+        task: create_map_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Map of incident events
+        map:
+          argnames: [view, data]
+          argvalues: ${{ workflow.events_map_html.return }}
+
+      - id: events_map_merged
+        task: merge_widget_views
+        skipif:
+          conditions:
+            - never
+        partial:
+          widgets: ${{ workflow.events_map_widget.return }}
+
+  - name: Dashboard
+    id: dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return }}
+      widgets:
+        - ${{ workflow.events_map_merged.return }}
+      groupers: ${{ workflow.groupers.return }}
+      time_range: ${{ workflow.time_range.return }}

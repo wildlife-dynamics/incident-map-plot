@@ -21,7 +21,7 @@ version = ">=2.37.0,<3.0.0"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-wd]
-version = "==0.0.20"
+version = "==0.0.21"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.pydeck]

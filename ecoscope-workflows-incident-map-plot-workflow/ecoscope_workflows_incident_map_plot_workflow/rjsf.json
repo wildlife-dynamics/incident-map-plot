@@ -289,7 +289,7 @@
           "properties": {
             "show_icons": {
               "default": true,
-              "description": "Draw each event with its EarthRanger icon. Turn off for dots in the event-type colour.",
+              "description": "Draw each event with its EarthRanger icon, in its event-type colour. Turn off for dots in that colour.",
               "title": "Show event icons on the map",
               "type": "boolean"
             }

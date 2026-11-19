@@ -40,8 +40,9 @@ requirements:
   # wd-partner-tasks: src/ecoscope-workflows-ext-wd (draw_incident_events_map, in _incidents.py).
   # 0.0.20: draw_incident_events_map takes the RGBA colours apply_color_map writes. (0.0.19 was
   # the first without the ext-custom dependency, whose releases need wt-task <0.2.)
+  # 0.0.21: event icons drawn in their event-type colour with a thin white edge.
   - name: ecoscope-workflows-ext-wd
-    version: "0.0.20"
+    version: "0.0.21"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   # ecoscope-platform requires pydeck==0.9.2, which is only on conda-forge;
@@ -70,7 +71,7 @@ rjsf-overrides:
     # mark the selected option, so the default looked unset.
     Map.properties.events_map.properties.show_icons.title: Show event icons on the map
     Map.properties.events_map.properties.show_icons.description: >-
-      Draw each event with its EarthRanger icon. Turn off for dots in the event-type colour.
+      Draw each event with its EarthRanger icon, in its event-type colour. Turn off for dots in that colour.
 
   $defs:
     ValueGrouper.properties.index_name.oneOf:

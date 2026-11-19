@@ -1,6 +1,6 @@
 # Incident Map Plot
 
-An EarthRanger workflow that downloads **incidents** (ER's collections of related events) with **all of their events**, and shows the events on a **map**: each one drawn with its EarthRanger event icon, or as a dot in its event-type colour, with a legend of event types.
+An EarthRanger workflow that downloads **incidents** (ER's collections of related events) with **all of their events**, and shows the events on a **map**: each one drawn with its EarthRanger event icon in its event-type colour, or as a dot of that colour, with a legend of event types.
 
 It is one output of the incident report, split out on its own so it can be combined with other outputs elsewhere.
 
@@ -10,7 +10,7 @@ It is one output of the incident report, split out on its own so it can be combi
 
 | Output | Shows |
 |---|---|
-| Map of incident events (widget) | Each located event as its ER icon or a coloured dot. The legend lists the event types, with their icons or colours; with one incident, its title is the incident. Events of one incident at the same spot (~10 m) share a count badge. Hover shows the event, type, time, state and incident. Events without a location aren't drawn. |
+| Map of incident events (widget) | Each located event as its ER icon in its event-type colour (with a thin white edge) or a coloured dot. The legend lists the event types, with their coloured icons or dots; with one incident, its title is the incident. Events of one incident at the same spot (~10 m) share a count badge. Hover shows the event, type, time, state and incident. Events without a location aren't drawn. |
 
 Every event type has one colour, the same in every view: the most common type takes the first of 16 set colours (`color_map_by_frequency`, then `apply_color_map`). incident-storyboard and incident-sunburst-plot use the same list and order, so their colours agree.
 
@@ -22,7 +22,7 @@ Every event type has one colour, the same in every view: the most common type ta
 | Time Range | Selects incidents by their own date. **All** of an incident's events are included, even those dated outside the range. Times are shown in the range's timezone. |
 | Group by | Optional. **Incident** gives one map per incident. |
 | Base Maps | The tile layers under the map; the first is the bottom layer. |
-| Show event icons on the map | On (default): ER event icons. Off: dots in the event-type colour. |
+| Show event icons on the map | On (default): ER event icons in the event-type colour. Off: dots in that colour. |
 
 ## How it works
 
@@ -36,7 +36,7 @@ get_incident_events (platform)   incidents in the range → their events, displa
   → gather_dashboard
 ```
 
-Tasks come from `ecoscope-platform` (≥ 2.37.0) and, for the map, `ecoscope-workflows-ext-wd` 0.0.20 ([wd-partner-tasks](https://github.com/wildlife-dynamics/wd-partner_tasks), `src/ecoscope-workflows-ext-wd`). Both packages have a task named `get_incident_events`; the spec names the platform one by its module path. Nested incidents are followed up to 5 levels deep and icons are always downloaded (`max_depth: 5`, `include_icons: true`, fixed in `spec.yaml`).
+Tasks come from `ecoscope-platform` (≥ 2.37.0) and, for the map, `ecoscope-workflows-ext-wd` 0.0.21 ([wd-partner-tasks](https://github.com/wildlife-dynamics/wd-partner_tasks), `src/ecoscope-workflows-ext-wd`). Both packages have a task named `get_incident_events`; the spec names the platform one by its module path. Nested incidents are followed up to 5 levels deep and icons are always downloaded (`max_depth: 5`, `include_icons: true`, fixed in `spec.yaml`).
 
 ## Local development
 
